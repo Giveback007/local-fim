@@ -1,7 +1,7 @@
 {
   "name": "extension-1",
   "displayName": "Extension 1",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "dovy",
   "description": "Local FIM (fill-in-the-middle) inline completion via Ollama.",
   "engines": {
@@ -22,8 +22,13 @@
     "keybindings": [
       {
         "command": "extension1.fim",
-        "key": "alt+/",
+        "key": "alt+\\",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "editor.action.inlineSuggest.commit",
+        "key": "tab",
+        "when": "inlineSuggestionVisible && !editorReadonly && !suggestWidgetVisible"
       },
       {
         "command": "editor.action.inlineSuggest.acceptNextWord",

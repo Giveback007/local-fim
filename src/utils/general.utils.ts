@@ -32,8 +32,11 @@ async function ollamaGenerate(inputText: FimText, stream = true) {
                 model: MODEL,
                 prompt: getPrompt(inputText),
                 stream,
-                raw: true, // need to understands this 
-                options: { temperature: MODEL_TEMP, num_predict: 256 }, // need to understand this
+                raw: true, 
+                options: {
+                    temperature: MODEL_TEMP,
+                    num_predict: 256
+                },
             }),
             signal: controller.signal,
         })

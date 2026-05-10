@@ -1,5 +1,7 @@
 import { streamFimLine } from "./utils/general.utils";
 
+// ! file to test functionality without running vs-code
+
 const log = console.log;
 
 async function triggerStream() {
