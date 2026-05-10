@@ -1,12 +1,47 @@
 {
-  "compilerOptions": {
-    "module": "Node16",
-    "moduleResolution": "Node16",
-    "target": "ES2022",
-    "rootDir": "src",
-    "outDir": "out",
-    "strict": true,
-    "lib": ["ES2022", "dom"]
-  },
-  "include": ["src"]
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "display": "Node.js",
+    "compilerOptions": {
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "target": "ESNext",
+        "lib": ["ESNext", "DOM"],
+        "types": ["node"],
+        "rootDir": "src",
+        "outDir": "out",
+        "allowJs": false,
+        "declaration": true,
+        "removeComments": false,
+        "isolatedModules": false,
+        "importHelpers": true,
+        "sourceMap": true,
+        "pretty": true,
+
+        /* Additional Options */
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true,
+
+        /* -- Strict Type-Checking Options -- */
+        "strict": true,
+        "noImplicitThis": true,
+        "noImplicitAny": true,
+        "alwaysStrict": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "strictFunctionTypes": true,
+        "strictNullChecks": true,
+        "strictPropertyInitialization": true,
+        "strictBindCallApply": true,
+        "noUncheckedIndexedAccess": true,
+        "noImplicitOverride": true,
+        "noPropertyAccessFromIndexSignature": true,
+        "noFallthroughCasesInSwitch": true,
+        "useUnknownInCatchVariables": false,
+        "verbatimModuleSyntax": true,
+    },
+    "include": ["src"]
 }

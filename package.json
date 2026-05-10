@@ -2,12 +2,16 @@
   "name": "extension-1",
   "displayName": "Extension 1",
   "version": "0.0.1",
+  "publisher": "dovy",
+  "description": "Local FIM (fill-in-the-middle) inline completion via Ollama.",
   "engines": {
     "vscode": "^1.118.1",
     "node": ">=24"
   },
   "main": "./out/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
@@ -18,7 +22,7 @@
     "keybindings": [
       {
         "command": "extension1.fim",
-        "key": "ctrl+alt+space",
+        "key": "alt+/",
         "when": "editorTextFocus"
       },
       {
@@ -54,6 +58,11 @@
           "type": "number",
           "default": 0.2,
           "description": "Sampling temperature."
+        },
+        "extension1.contextChars": {
+          "type": "number",
+          "default": 4000,
+          "description": "Total characters of surrounding code sent as FIM context (split between prefix and suffix)."
         }
       }
     }
@@ -63,6 +72,7 @@
     "build": "node build.mjs"
   },
   "devDependencies": {
+    "@types/node": "^25.6.2",
     "@types/vscode": "^1.118.0",
     "esbuild": "^0.28.0",
     "typescript": "^6.0.3"

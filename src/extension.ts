@@ -1,39 +1,51 @@
 import * as vscode from "vscode";
 import { queryFim } from "./query";
 
-const WINDOW_RADIUS = 50;
+const DEFAULT_CONTEXT_CHARS = 4000;
 
-function buildContext(doc: vscode.TextDocument, pos: vscode.Position): { prefix: string; suffix: string } {
-  const startLine = Math.max(0, pos.line - WINDOW_RADIUS);
-  const endLine = Math.min(doc.lineCount - 1, pos.line + WINDOW_RADIUS);
-  const prefix = doc.getText(new vscode.Range(new vscode.Position(startLine, 0), pos));
-  const suffix = doc.getText(new vscode.Range(pos, doc.lineAt(endLine).range.end));
+function buildContext(doc: vscode.TextDocument, pos: vscode.Position, budget: number): { prefix: string; suffix: string } {
+  const half = Math.max(256, Math.floor(budget / 2));
+  const head = new vscode.Position(0, 0);
+  const tail = doc.lineAt(doc.lineCount - 1).range.end;
+  const fullPrefix = doc.getText(new vscode.Range(head, pos));
+  const fullSuffix = doc.getText(new vscode.Range(pos, tail));
+  const prefix = fullPrefix.length > half ? fullPrefix.slice(fullPrefix.length - half) : fullPrefix;
+  const suffix = fullSuffix.length > half ? fullSuffix.slice(0, half) : fullSuffix;
   return { prefix, suffix };
 }
 
 class StatusBar {
   private item: vscode.StatusBarItem;
   private active = 0;
+  private startedAt = 0;
 
   constructor() {
     this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    this.idle();
+    this.item.show();
+  }
+
+  private idle() {
     this.item.text = "$(sparkle) FIM";
     this.item.tooltip = "FIM idle";
-    this.item.show();
   }
 
   start() {
     this.active++;
-    this.item.text = "$(sync~spin) FIM";
+    this.startedAt = Date.now();
+    this.item.text = "$(sync~spin) FIM 0";
     this.item.tooltip = "FIM generating…";
+  }
+
+  progress(tokens: number) {
+    const secs = Math.max(0.001, (Date.now() - this.startedAt) / 1000);
+    const tps = (tokens / secs).toFixed(1);
+    this.item.text = `$(sync~spin) FIM ${tokens} (${tps} t/s)`;
   }
 
   stop() {
     this.active = Math.max(0, this.active - 1);
-    if (this.active === 0) {
-      this.item.text = "$(sparkle) FIM";
-      this.item.tooltip = "FIM idle";
-    }
+    if (this.active === 0) this.idle();
   }
 
   dispose() {
@@ -59,17 +71,19 @@ class FimProvider implements vscode.InlineCompletionItemProvider {
     this.inflight = ac;
     token.onCancellationRequested(() => ac.abort());
 
-    const { prefix, suffix } = buildContext(document, position);
+    const cfg = vscode.workspace.getConfiguration("extension1");
+    const budget = cfg.get<number>("contextChars", DEFAULT_CONTEXT_CHARS);
+    const { prefix, suffix } = buildContext(document, position, budget);
 
     this.status.start();
     try {
-      const completion = await queryFim(prefix, suffix, ac.signal);
+      const completion = await queryFim(prefix, suffix, ac.signal, {
+        onToken: (_text, n) => this.status.progress(n),
+      });
       if (!completion || token.isCancellationRequested) return [];
-      const item = new vscode.InlineCompletionItem(completion);
-      item.range = new vscode.Range(position, position);
-      return [item];
+      return [new vscode.InlineCompletionItem(completion)];
     } catch (err) {
-      if ((err as Error).name === "AbortError") return [];
+      if (ac.signal.aborted) return [];
       vscode.window.showErrorMessage(`FIM: ${(err as Error).message}`);
       return [];
     } finally {
