@@ -1,0 +1,70 @@
+{
+  "name": "extension-1",
+  "displayName": "Extension 1",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.118.1",
+    "node": ">=24"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension1.fim",
+        "title": "FIM: Trigger Completion"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "extension1.fim",
+        "key": "ctrl+alt+space",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "editor.action.inlineSuggest.acceptNextWord",
+        "key": "ctrl+right",
+        "when": "inlineSuggestionVisible && !editorReadonly"
+      },
+      {
+        "command": "editor.action.inlineSuggest.acceptNextLine",
+        "key": "ctrl+shift+right",
+        "when": "inlineSuggestionVisible && !editorReadonly"
+      }
+    ],
+    "configuration": {
+      "title": "Extension 1 (FIM)",
+      "properties": {
+        "extension1.endpoint": {
+          "type": "string",
+          "default": "http://localhost:11434/api/generate",
+          "description": "Ollama generate endpoint."
+        },
+        "extension1.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:3b-base-q6_K",
+          "description": "Ollama model tag (must be a base model with FIM tokens)."
+        },
+        "extension1.maxTokens": {
+          "type": "number",
+          "default": 256,
+          "description": "Max tokens to generate (num_predict)."
+        },
+        "extension1.temperature": {
+          "type": "number",
+          "default": 0.2,
+          "description": "Sampling temperature."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "dev": "node build.mjs --watch",
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.118.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3"
+  }
+}
