@@ -71,7 +71,7 @@ class FimProvider implements vscode.InlineCompletionItemProvider {
     this.inflight = ac;
     token.onCancellationRequested(() => ac.abort());
 
-    const cfg = vscode.workspace.getConfiguration("extension1");
+    const cfg = vscode.workspace.getConfiguration("homeFim");
     const budget = cfg.get<number>("contextChars", DEFAULT_CONTEXT_CHARS);
     const { prefix, suffix } = buildContext(document, position, budget);
 
@@ -97,7 +97,7 @@ export function activate(context: vscode.ExtensionContext) {
   const provider = new FimProvider(status);
   const reg = vscode.languages.registerInlineCompletionItemProvider({ pattern: "**" }, provider);
 
-  const trigger = vscode.commands.registerCommand("extension1.fim", () => {
+  const trigger = vscode.commands.registerCommand("homeFim.trigger", () => {
     vscode.commands.executeCommand("editor.action.inlineSuggest.trigger");
   });
 

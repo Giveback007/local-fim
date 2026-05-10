@@ -1,6 +1,6 @@
 {
-  "name": "extension-1",
-  "displayName": "Extension 1",
+  "name": "home-fim",
+  "displayName": "HomeFIM",
   "version": "0.0.3",
   "publisher": "dovy",
   "description": "Local FIM (fill-in-the-middle) inline completion via Ollama.",
@@ -15,13 +15,13 @@
   "contributes": {
     "commands": [
       {
-        "command": "extension1.fim",
-        "title": "FIM: Trigger Completion"
+        "command": "homeFim.trigger",
+        "title": "HomeFIM: Trigger Completion"
       }
     ],
     "keybindings": [
       {
-        "command": "extension1.fim",
+        "command": "homeFim.trigger",
         "key": "alt+\\",
         "when": "editorTextFocus"
       },
@@ -42,29 +42,29 @@
       }
     ],
     "configuration": {
-      "title": "Extension 1 (FIM)",
+      "title": "HomeFIM",
       "properties": {
-        "extension1.endpoint": {
+        "homeFim.endpoint": {
           "type": "string",
           "default": "http://localhost:11434/api/generate",
           "description": "Ollama generate endpoint."
         },
-        "extension1.model": {
+        "homeFim.model": {
           "type": "string",
           "default": "qwen2.5-coder:3b-base-q6_K",
           "description": "Ollama model tag (must be a base model with FIM tokens)."
         },
-        "extension1.maxTokens": {
+        "homeFim.maxTokens": {
           "type": "number",
           "default": 256,
           "description": "Max tokens to generate (num_predict)."
         },
-        "extension1.temperature": {
+        "homeFim.temperature": {
           "type": "number",
           "default": 0.2,
           "description": "Sampling temperature."
         },
-        "extension1.contextChars": {
+        "homeFim.contextChars": {
           "type": "number",
           "default": 4000,
           "description": "Total characters of surrounding code sent as FIM context (split between prefix and suffix)."
