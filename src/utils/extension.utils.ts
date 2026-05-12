@@ -1,12 +1,20 @@
 import type { StatusBarItem } from "vscode";
+import type { HealthStatus } from "./ollama.client";
 
 import { window, StatusBarAlignment } from "vscode";
 
+const healthDisplay: Record<HealthStatus, { icon: string; label: string }> = {
+    ready:    { icon: "$(sparkle)",  label: "FIM Ready" },
+    "no-model": { icon: "$(warning)", label: "FIM No Model" },
+    down:     { icon: "$(error)",    label: "FIM Offline" },
+};
+
 export class StatusBar {
     private item: StatusBarItem;
-    // private active = 0;
     private startedAt: number | null = null;
     private tps = 0;
+    private health: HealthStatus = "down";
+    private healthReason = "";
 
     constructor() {
         this.item = window.createStatusBarItem(StatusBarAlignment.Right, 100);
@@ -14,9 +22,17 @@ export class StatusBar {
         this.item.show();
     }
 
+    setHealth(status: HealthStatus, reason = "") {
+        this.health = status;
+        this.healthReason = reason;
+        this.idle();
+    }
+
     private idle() {
-        this.item.text = `$(sparkle) FIM (${this.tps.toFixed(1)} t/s)`;
-        this.item.tooltip = "FIM idle";
+        const { icon, label } = healthDisplay[this.health];
+        const tpsStr = this.tps > 0 ? ` (${this.tps.toFixed(1)} t/s)` : "";
+        this.item.text = `${icon} ${label}${tpsStr}`;
+        this.item.tooltip = this.healthReason || label;
     }
 
     start() {
@@ -32,6 +48,6 @@ export class StatusBar {
         this.item.text = `$(sync~spin) FIM ${tokens} (${this.tps.toFixed(1)} t/s)`;
     }
 
-    stop = () => this.idle()
+    stop = () => this.idle();
     dispose = () => this.item.dispose();
 }

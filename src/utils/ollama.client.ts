@@ -14,42 +14,50 @@ export type HealthStatus = "ready" | "no-model" | "down";
 
 export class OllamaClient {
     private baseUrl: string;
+    private healthCheckItv: NodeJS.Timeout;
+    onHealthChange?: (status: HealthStatus, reason: string) => void;
 
     constructor(private config: FimConfig) {
         this.baseUrl = this.deriveBaseUrl(config.endpoint);
+
         
-        // Health check on activate + poll every 30s
-        const runHealthCheck = async () => {
-            const health = await this.checkHealth();
-            console.log(`[HomeFIM] health: ${health}`);
-        };
-        runHealthCheck();
-        this.healthCheckItv = setInterval(runHealthCheck, 30_000);
+        this.checkHealth()
+        this.healthCheckItv = setInterval(this.checkHealth, 30_000);
     }
 
     updateConfig(config: FimConfig) {
         this.config = config;
         this.baseUrl = this.deriveBaseUrl(config.endpoint);
+        this.checkHealth();
     }
 
     private deriveBaseUrl(endpoint: string): string {
-        // strip /api/generate or /api/* suffix to get base
         return endpoint.replace(/\/api\/.*$/, "");
     }
 
-    async checkHealth(): Promise<HealthStatus> {
+    checkHealth = async (): Promise<HealthStatus> => {
+        let status: HealthStatus;
+        let reason: string;
         try {
             const models = await this.listModels();
-            if (models.includes(this.config.model)) return "ready";
-            return "no-model";
+            if (models.includes(this.config.model)) {
+                status = "ready";
+                reason = `Model ${this.config.model} loaded`;
+            } else {
+                status = "no-model";
+                reason = `Model ${this.config.model} not found. Available: ${models.join(", ") || "none"}`;
+            }
         } catch {
-            return "down";
+            status = "down";
+            reason = `Ollama not running at ${this.baseUrl}`;
         }
+        console.log(`[HomeFIM] health: ${status}`);
+        this.onHealthChange?.(status, reason);
+        return status;
     }
 
-    healthCheckItv: NodeJS.Timeout;
     async cleanUp() {
-        clearInterval(this.healthCheckItv)
+        clearInterval(this.healthCheckItv);
     }
 
     async listModels(): Promise<string[]> {

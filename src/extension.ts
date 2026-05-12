@@ -83,6 +83,10 @@ export function activate(context: ExtensionContext) {
 
     const client = new OllamaClient(readFimConfig());
     const status = new StatusBar();
+
+    // Wire health → StatusBar
+    client.onHealthChange = (s, reason) => status.setHealth(s, reason);
+
     const provider = new FimProvider(status, client);
     const reg = languages.registerInlineCompletionItemProvider({ pattern: "**" }, provider);
 
@@ -90,16 +94,15 @@ export function activate(context: ExtensionContext) {
         commands.executeCommand("editor.action.inlineSuggest.trigger");
     });
 
-    // Refresh client config when settings change
     const onConfigChange = workspace.onDidChangeConfiguration(e => {
-        if (e.affectsConfiguration("homeFim")) client.updateConfig(readFimConfig())
+        if (e.affectsConfiguration("homeFim")) client.updateConfig(readFimConfig());
     });
 
     const dismissTriggers = [
-        window.onDidChangeWindowState,          // onFocus
-        window.onDidChangeActiveTextEditor,     // onActive
-        workspace.onDidCloseTextDocument,       // onClose
-        window.onDidChangeTextEditorSelection,  // onSel
+        window.onDidChangeWindowState,
+        window.onDidChangeActiveTextEditor,
+        workspace.onDidCloseTextDocument,
+        window.onDidChangeTextEditorSelection,
     ].map(fn => fn(provider.stopGeneration));
 
     context.subscriptions.push(
