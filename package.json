@@ -1,7 +1,7 @@
 {
     "name": "home-fim",
     "displayName": "HomeFIM",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "publisher": "Giveback007",
     "description": "Local FIM (fill-in-the-middle) inline completion via Ollama.",
     "icon": "icon.png",

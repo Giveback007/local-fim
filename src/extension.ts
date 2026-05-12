@@ -33,13 +33,14 @@ function readFimConfig(): FimConfig {
 }
 
 function buildContext(doc: TextDocument, pos: Position, budget: number): { prefix: string; suffix: string } {
-    const half = Math.max(256, Math.floor(budget / 2));
+    const prefixBudget = Math.max(256, Math.round(Math.floor(budget * 0.7)));
+    const suffixBudget = Math.max(128, Math.round(budget - prefixBudget));
     const head = new Position(0, 0);
     const tail = doc.lineAt(doc.lineCount - 1).range.end;
     const fullPrefix = doc.getText(new Range(head, pos));
     const fullSuffix = doc.getText(new Range(pos, tail));
-    const prefix = fullPrefix.length > half ? fullPrefix.slice(fullPrefix.length - half) : fullPrefix;
-    const suffix = fullSuffix.length > half ? fullSuffix.slice(0, half) : fullSuffix;
+    const prefix = fullPrefix.length > prefixBudget ? fullPrefix.slice(fullPrefix.length - prefixBudget) : fullPrefix;
+    const suffix = fullSuffix.length > suffixBudget ? fullSuffix.slice(0, suffixBudget) : fullSuffix;
     return { prefix, suffix };
 }
 
