@@ -1,13 +1,24 @@
 import {
     type TextDocument, type InlineCompletionContext, type CancellationToken,
-    type InlineCompletionItemProvider,
-    type ExtensionContext,
+    type InlineCompletionItemProvider, type ExtensionContext,
+
     Position, Range, InlineCompletionTriggerKind, InlineCompletionItem,
     workspace, window, languages, commands,
 } from "vscode";
 
 import { StatusBar } from "./utils/extension.utils";
-import { streamFimLine, type FimConfig } from "./utils/general.utils";
+import { OllamaClient, type FimConfig } from "./utils/ollama.client";
+
+function readFimConfig(): FimConfig {
+    const cfg = workspace.getConfiguration("homeFim");
+    return {
+        endpoint: cfg.get<string>("endpoint", "http://localhost:11434/api/generate"),
+        model: cfg.get<string>("model", "qwen2.5-coder:3b-base-q6_K"),
+        maxTokens: cfg.get<number>("maxTokens", 256),
+        temperature: cfg.get<number>("temperature", 0.2),
+        ctxBudget: cfg.get<number>("contextChars", 4000)
+    };
+}
 
 function buildContext(doc: TextDocument, pos: Position, budget: number): { prefix: string; suffix: string } {
     const half = Math.max(256, Math.floor(budget / 2));
@@ -22,7 +33,10 @@ function buildContext(doc: TextDocument, pos: Position, budget: number): { prefi
 
 class FimProvider implements InlineCompletionItemProvider {
 
-    constructor(private status: StatusBar) { }
+    constructor(
+        private status: StatusBar,
+        private client: OllamaClient,
+    ) { }
 
     stopGeneration = () => { }
 
@@ -33,64 +47,63 @@ class FimProvider implements InlineCompletionItemProvider {
         cancellationToken: CancellationToken,
     ) {
         if (context.triggerKind !== InlineCompletionTriggerKind.Invoke) {
-            console.log("SKIP")
-            this.stopGeneration()
+            this.stopGeneration();
             return [];
         }
 
         this.status.start();
 
-        const cfg = workspace.getConfiguration("homeFim");
-        const budget = cfg.get<number>("contextChars", 4000);
-        const ctx = buildContext(document, position, budget);
-
-        const fimConfig: FimConfig = {
-            endpoint: cfg.get<string>("endpoint", "http://localhost:11434/api/generate"),
-            model: cfg.get<string>("model", "qwen2.5-coder:3b-base-q6_K"),
-            maxTokens: cfg.get<number>("maxTokens", 256),
-            temperature: cfg.get<number>("temperature", 0.2),
-        };
+        const ctx = buildContext(document, position, readFimConfig().ctxBudget);
 
         let tokens = 0;
-        let acc = ''
-        const { stop, done } = await streamFimLine(ctx, fimConfig, async tkn => {
+        let acc = '';
+        const { stop, done } = await this.client.streamLines(ctx, async tkn => {
             acc += tkn;
-            this.status.progress(++tokens)
+            this.status.progress(++tokens);
         }, { nOfLines: 1 });
         cancellationToken.onCancellationRequested(stop);
         this.stopGeneration = stop;
         await done;
-
-        console.log(`[${JSON.stringify(acc)}]`)
-
         this.status.stop();
+
+        console.log(`[${JSON.stringify(acc)}]`);
+        if (cancellationToken.isCancellationRequested) return [];
+
         const cleaned = acc.replace(/\n+$/, '');
         return [new InlineCompletionItem(cleaned, new Range(position, position))];
     }
 }
 
 export function activate(context: ExtensionContext) {
+    // Use this if you want auto open dev-tools:
     // if (context.extensionMode === ExtensionMode.Development)
     //     commands.executeCommand('workbench.action.toggleDevTools');
 
+    const client = new OllamaClient(readFimConfig());
     const status = new StatusBar();
-    const provider = new FimProvider(status);
+    const provider = new FimProvider(status, client);
     const reg = languages.registerInlineCompletionItemProvider({ pattern: "**" }, provider);
 
     const trigger = commands.registerCommand("homeFim.trigger", () => {
         commands.executeCommand("editor.action.inlineSuggest.trigger");
     });
 
-    const onFocus = window.onDidChangeWindowState
-    const onActive = window.onDidChangeActiveTextEditor
-    const onClose = workspace.onDidCloseTextDocument
-    const onSel = window.onDidChangeTextEditorSelection
+    // Refresh client config when settings change
+    const onConfigChange = workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration("homeFim")) client.updateConfig(readFimConfig())
+    });
 
     const dismissTriggers = [
-        onFocus, onActive, onClose, onSel
-    ].map(fn => fn(provider.stopGeneration))
+        window.onDidChangeWindowState,          // onFocus
+        window.onDidChangeActiveTextEditor,     // onActive
+        workspace.onDidCloseTextDocument,       // onClose
+        window.onDidChangeTextEditorSelection,  // onSel
+    ].map(fn => fn(provider.stopGeneration));
 
-    context.subscriptions.push(reg, trigger, status, ...dismissTriggers);
+    context.subscriptions.push(
+        reg, trigger, status, onConfigChange, ...dismissTriggers,
+        { dispose: () => client.cleanUp() },
+    );
 }
 
 export function deactivate() { }

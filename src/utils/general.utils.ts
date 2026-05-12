@@ -1,13 +1,4 @@
-import type { FimText, OllamaDoneResponse, OllamaToken } from "../types/app";
-
-export type FimConfig = {
-    endpoint: string;
-    model: string;
-    maxTokens: number;
-    temperature: number;
-};
-
-async function pumpReader(
+export async function pumpReader(
     reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>>,
     onChunk: (bytes: Uint8Array) => void,
     onEnd?: () => void,
@@ -20,68 +11,6 @@ async function pumpReader(
         }
     } catch (e) {
         if ((e as Error).name !== "AbortError") throw e;
-        onEnd?.();   // treat abort as "stream ended"
+        onEnd?.();
     }
-}
-
-async function ollamaGenerate(inputText: FimText, config: FimConfig, stream = true) {
-    const getPrompt = ({ prefix, suffix }: FimText) =>
-        `<|fim_prefix|>${prefix}<|fim_suffix|>${suffix}<|fim_middle|>`;
-
-    const controller: AbortController = new AbortController();
-    return {
-        stop: () => controller.abort(),
-        response: await fetch(config.endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                model: config.model,
-                prompt: getPrompt(inputText),
-                stream,
-                raw: true,
-                options: {
-                    temperature: config.temperature,
-                    num_predict: config.maxTokens,
-                },
-            }),
-            signal: controller.signal,
-        })
-    }
-}
-
-export async function streamFimLine(
-    inputText: FimText,
-    config: FimConfig,
-    onToken: (token: string) => any,
-    options: {
-        onEnd?: (doneRes: OllamaDoneResponse) => any,
-        nOfLines?: number;
-    } = {}
-) {
-    const { onEnd, nOfLines = 1 } = options;
-    const { response, stop } = await ollamaGenerate(inputText, config);
-    if (!response.body) throw new Error("no body");
-
-    const decoder = new TextDecoder();
-    const reader = response.body.getReader();
-
-    let acc = '';
-    const done = pumpReader(reader, (bytes) => {
-        const str = decoder.decode(bytes, { stream: true });
-        const tokens: (OllamaToken | OllamaDoneResponse)[] = str
-            .split("\n")
-            .filter(s => s.trim())
-            .map(s => JSON.parse(s));
-
-        for (const o of tokens) {
-            onToken(o.response);
-            
-            acc += o.response;
-            const nlCount = (acc.trimStart().match(/\n/g) ?? []).length;
-            if (nlCount >= nOfLines) return stop();
-            if (o.done) return onEnd?.(o);
-        }
-    });
-
-    return { stop, done };
 }
