@@ -1,107 +1,91 @@
-import * as vscode from "vscode";
-import { queryFim } from "./query";
+import {
+    type TextDocument, type InlineCompletionContext, type CancellationToken,
+    type InlineCompletionItemProvider,
+    type ExtensionContext,
+    Position, Range, InlineCompletionTriggerKind, InlineCompletionItem,
+    workspace, window, languages, commands,
+} from "vscode";
+
+import { StatusBar } from "./utils/extension.utils";
+import { streamFimLine } from "./utils/general.utils";
 
 const DEFAULT_CONTEXT_CHARS = 4000;
 
-function buildContext(doc: vscode.TextDocument, pos: vscode.Position, budget: number): { prefix: string; suffix: string } {
-  const half = Math.max(256, Math.floor(budget / 2));
-  const head = new vscode.Position(0, 0);
-  const tail = doc.lineAt(doc.lineCount - 1).range.end;
-  const fullPrefix = doc.getText(new vscode.Range(head, pos));
-  const fullSuffix = doc.getText(new vscode.Range(pos, tail));
-  const prefix = fullPrefix.length > half ? fullPrefix.slice(fullPrefix.length - half) : fullPrefix;
-  const suffix = fullSuffix.length > half ? fullSuffix.slice(0, half) : fullSuffix;
-  return { prefix, suffix };
+function buildContext(doc: TextDocument, pos: Position, budget: number): { prefix: string; suffix: string } {
+    const half = Math.max(256, Math.floor(budget / 2));
+    const head = new Position(0, 0);
+    const tail = doc.lineAt(doc.lineCount - 1).range.end;
+    const fullPrefix = doc.getText(new Range(head, pos));
+    const fullSuffix = doc.getText(new Range(pos, tail));
+    const prefix = fullPrefix.length > half ? fullPrefix.slice(fullPrefix.length - half) : fullPrefix;
+    const suffix = fullSuffix.length > half ? fullSuffix.slice(0, half) : fullSuffix;
+    return { prefix, suffix };
 }
 
-class StatusBar {
-  private item: vscode.StatusBarItem;
-  private active = 0;
-  private startedAt = 0;
+class FimProvider implements InlineCompletionItemProvider {
 
-  constructor() {
-    this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    this.idle();
-    this.item.show();
-  }
+    constructor(private status: StatusBar) { }
 
-  private idle() {
-    this.item.text = "$(sparkle) FIM";
-    this.item.tooltip = "FIM idle";
-  }
+    stopGeneration = () => { }
 
-  start() {
-    this.active++;
-    this.startedAt = Date.now();
-    this.item.text = "$(sync~spin) FIM 0";
-    this.item.tooltip = "FIM generating…";
-  }
+    async provideInlineCompletionItems(
+        document: TextDocument,
+        position: Position,
+        context: InlineCompletionContext,
+        cancellationToken: CancellationToken,
+    ) {
+        if (context.triggerKind !== InlineCompletionTriggerKind.Invoke) {
+            console.log("SKIP")
+            this.stopGeneration()
+            return [];
+        }
 
-  progress(tokens: number) {
-    const secs = Math.max(0.001, (Date.now() - this.startedAt) / 1000);
-    const tps = (tokens / secs).toFixed(1);
-    this.item.text = `$(sync~spin) FIM ${tokens} (${tps} t/s)`;
-  }
+        this.status.start();
 
-  stop() {
-    this.active = Math.max(0, this.active - 1);
-    if (this.active === 0) this.idle();
-  }
+        const cfg = workspace.getConfiguration("homeFim");
+        const budget = cfg.get<number>("contextChars", DEFAULT_CONTEXT_CHARS);
+        const ctx = buildContext(document, position, budget);
 
-  dispose() {
-    this.item.dispose();
-  }
-}
+        let tokens = 0;
+        let acc = ''
+        const { stop, done } = await streamFimLine(ctx, async tkn => {
+            acc += tkn;
+            this.status.progress(++tokens)
+        }, { nOfLines: 1 });
+        cancellationToken.onCancellationRequested(stop);
+        this.stopGeneration = stop;
+        await done;
 
-class FimProvider implements vscode.InlineCompletionItemProvider {
-  private inflight: AbortController | null = null;
+        console.log(`[${JSON.stringify(acc)}]`)
 
-  constructor(private status: StatusBar) {}
-
-  async provideInlineCompletionItems(
-    document: vscode.TextDocument,
-    position: vscode.Position,
-    context: vscode.InlineCompletionContext,
-    token: vscode.CancellationToken,
-  ): Promise<vscode.InlineCompletionItem[]> {
-    if (context.triggerKind !== vscode.InlineCompletionTriggerKind.Invoke) return [];
-
-    this.inflight?.abort();
-    const ac = new AbortController();
-    this.inflight = ac;
-    token.onCancellationRequested(() => ac.abort());
-
-    const cfg = vscode.workspace.getConfiguration("homeFim");
-    const budget = cfg.get<number>("contextChars", DEFAULT_CONTEXT_CHARS);
-    const { prefix, suffix } = buildContext(document, position, budget);
-
-    this.status.start();
-    try {
-      const completion = await queryFim(prefix, suffix, ac.signal, {
-        onToken: (_text, n) => this.status.progress(n),
-      });
-      if (!completion || token.isCancellationRequested) return [];
-      return [new vscode.InlineCompletionItem(completion)];
-    } catch (err) {
-      if (ac.signal.aborted) return [];
-      vscode.window.showErrorMessage(`FIM: ${(err as Error).message}`);
-      return [];
-    } finally {
-      this.status.stop();
+        this.status.stop();
+        const cleaned = acc.replace(/\n+$/, '');
+        return [new InlineCompletionItem(cleaned, new Range(position, position))];
     }
-  }
 }
 
-export function activate(context: vscode.ExtensionContext) {
-  const status = new StatusBar();
-  const provider = new FimProvider(status);
-  const reg = vscode.languages.registerInlineCompletionItemProvider({ pattern: "**" }, provider);
+export function activate(context: ExtensionContext) {
+    // if (context.extensionMode === ExtensionMode.Development)
+    //     commands.executeCommand('workbench.action.toggleDevTools');
 
-  const trigger = vscode.commands.registerCommand("homeFim.trigger", () => {
-    vscode.commands.executeCommand("editor.action.inlineSuggest.trigger");
-  });
+    const status = new StatusBar();
+    const provider = new FimProvider(status);
+    const reg = languages.registerInlineCompletionItemProvider({ pattern: "**" }, provider);
 
-  context.subscriptions.push(reg, trigger, status);
+    const trigger = commands.registerCommand("homeFim.trigger", () => {
+        commands.executeCommand("editor.action.inlineSuggest.trigger");
+    });
+
+    const onFocus = window.onDidChangeWindowState
+    const onActive = window.onDidChangeActiveTextEditor
+    const onClose = workspace.onDidCloseTextDocument
+    const onSel = window.onDidChangeTextEditorSelection
+
+    const dismissTriggers = [
+        onFocus, onActive, onClose, onSel
+    ].map(fn => fn(provider.stopGeneration))
+
+    context.subscriptions.push(reg, trigger, status, ...dismissTriggers);
 }
 
-export function deactivate() {}
+export function deactivate() { }
