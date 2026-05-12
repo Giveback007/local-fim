@@ -7,9 +7,7 @@ import {
 } from "vscode";
 
 import { StatusBar } from "./utils/extension.utils";
-import { streamFimLine } from "./utils/general.utils";
-
-const DEFAULT_CONTEXT_CHARS = 4000;
+import { streamFimLine, type FimConfig } from "./utils/general.utils";
 
 function buildContext(doc: TextDocument, pos: Position, budget: number): { prefix: string; suffix: string } {
     const half = Math.max(256, Math.floor(budget / 2));
@@ -43,12 +41,19 @@ class FimProvider implements InlineCompletionItemProvider {
         this.status.start();
 
         const cfg = workspace.getConfiguration("homeFim");
-        const budget = cfg.get<number>("contextChars", DEFAULT_CONTEXT_CHARS);
+        const budget = cfg.get<number>("contextChars", 4000);
         const ctx = buildContext(document, position, budget);
+
+        const fimConfig: FimConfig = {
+            endpoint: cfg.get<string>("endpoint", "http://localhost:11434/api/generate"),
+            model: cfg.get<string>("model", "qwen2.5-coder:3b-base-q6_K"),
+            maxTokens: cfg.get<number>("maxTokens", 256),
+            temperature: cfg.get<number>("temperature", 0.2),
+        };
 
         let tokens = 0;
         let acc = ''
-        const { stop, done } = await streamFimLine(ctx, async tkn => {
+        const { stop, done } = await streamFimLine(ctx, fimConfig, async tkn => {
             acc += tkn;
             this.status.progress(++tokens)
         }, { nOfLines: 1 });

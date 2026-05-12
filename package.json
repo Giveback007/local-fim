@@ -1,7 +1,7 @@
 {
   "name": "home-fim",
   "displayName": "HomeFIM",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "dovy",
   "description": "Local FIM (fill-in-the-middle) inline completion via Ollama.",
   "engines": {

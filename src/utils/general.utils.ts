@@ -1,5 +1,11 @@
-import { MODEL, MODEL_TEMP } from "../config";
 import type { FimText, OllamaDoneResponse, OllamaToken } from "../types/app";
+
+export type FimConfig = {
+    endpoint: string;
+    model: string;
+    maxTokens: number;
+    temperature: number;
+};
 
 async function pumpReader(
     reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>>,
@@ -18,24 +24,24 @@ async function pumpReader(
     }
 }
 
-async function ollamaGenerate(inputText: FimText, stream = true) {
+async function ollamaGenerate(inputText: FimText, config: FimConfig, stream = true) {
     const getPrompt = ({ prefix, suffix }: FimText) =>
         `<|fim_prefix|>${prefix}<|fim_suffix|>${suffix}<|fim_middle|>`;
 
     const controller: AbortController = new AbortController();
     return {
         stop: () => controller.abort(),
-        response: await fetch("http://localhost:11434/api/generate", {
+        response: await fetch(config.endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                model: MODEL,
+                model: config.model,
                 prompt: getPrompt(inputText),
                 stream,
-                raw: true, 
+                raw: true,
                 options: {
-                    temperature: MODEL_TEMP,
-                    num_predict: 256
+                    temperature: config.temperature,
+                    num_predict: config.maxTokens,
                 },
             }),
             signal: controller.signal,
@@ -45,6 +51,7 @@ async function ollamaGenerate(inputText: FimText, stream = true) {
 
 export async function streamFimLine(
     inputText: FimText,
+    config: FimConfig,
     onToken: (token: string) => any,
     options: {
         onEnd?: (doneRes: OllamaDoneResponse) => any,
@@ -52,7 +59,7 @@ export async function streamFimLine(
     } = {}
 ) {
     const { onEnd, nOfLines = 1 } = options;
-    const { response, stop } = await ollamaGenerate(inputText);
+    const { response, stop } = await ollamaGenerate(inputText, config);
     if (!response.body) throw new Error("no body");
 
     const decoder = new TextDecoder();
