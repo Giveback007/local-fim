@@ -7,6 +7,7 @@ export type FimConfig = {
     maxTokens: number;
     temperature: number;
     ctxBudget: number;
+    nOfLines: number;
 };
 
 export type HealthStatus = "ready" | "no-model" | "down";

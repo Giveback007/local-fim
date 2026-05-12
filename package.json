@@ -1,88 +1,93 @@
 {
-  "name": "home-fim",
-  "displayName": "HomeFIM",
-  "version": "0.0.5",
-  "publisher": "dovy",
-  "description": "Local FIM (fill-in-the-middle) inline completion via Ollama.",
-  "engines": {
-    "vscode": "^1.118.1",
-    "node": ">=24"
-  },
-  "main": "./out/extension.js",
-  "activationEvents": [
-    "onStartupFinished"
-  ],
-  "contributes": {
-    "commands": [
-      {
-        "command": "homeFim.trigger",
-        "title": "HomeFIM: Trigger Completion"
-      }
+    "name": "home-fim",
+    "displayName": "HomeFIM",
+    "version": "0.0.5",
+    "publisher": "dovy",
+    "description": "Local FIM (fill-in-the-middle) inline completion via Ollama.",
+    "engines": {
+        "vscode": "^1.118.1",
+        "node": ">=24"
+    },
+    "main": "./out/extension.js",
+    "activationEvents": [
+        "onStartupFinished"
     ],
-    "keybindings": [
-      {
-        "command": "homeFim.trigger",
-        "key": "alt+\\",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "editor.action.inlineSuggest.commit",
-        "key": "tab",
-        "when": "inlineSuggestionVisible && !editorReadonly && !suggestWidgetVisible"
-      },
-      {
-        "command": "editor.action.inlineSuggest.acceptNextWord",
-        "key": "ctrl+right",
-        "when": "inlineSuggestionVisible && !editorReadonly"
-      },
-      {
-        "command": "editor.action.inlineSuggest.acceptNextLine",
-        "key": "ctrl+shift+right",
-        "when": "inlineSuggestionVisible && !editorReadonly"
-      }
-    ],
-    "configuration": {
-      "title": "HomeFIM",
-      "properties": {
-        "homeFim.endpoint": {
-          "type": "string",
-          "default": "http://localhost:11434/api/generate",
-          "description": "Ollama generate endpoint."
-        },
-        "homeFim.model": {
-          "type": "string",
-          "default": "qwen2.5-coder:3b-base-q6_K",
-          "description": "Ollama model tag (must be a base model with FIM tokens)."
-        },
-        "homeFim.maxTokens": {
-          "type": "number",
-          "default": 256,
-          "description": "Max tokens to generate (num_predict)."
-        },
-        "homeFim.temperature": {
-          "type": "number",
-          "default": 0.2,
-          "description": "Sampling temperature."
-        },
-        "homeFim.contextChars": {
-          "type": "number",
-          "default": 4000,
-          "description": "Total characters of surrounding code sent as FIM context (split between prefix and suffix)."
+    "contributes": {
+        "commands": [
+            {
+                "command": "homeFim.trigger",
+                "title": "HomeFIM: Trigger Completion"
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "homeFim.trigger",
+                "key": "alt+\\",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "editor.action.inlineSuggest.commit",
+                "key": "tab",
+                "when": "inlineSuggestionVisible && !editorReadonly && !suggestWidgetVisible"
+            },
+            {
+                "command": "editor.action.inlineSuggest.acceptNextWord",
+                "key": "ctrl+right",
+                "when": "inlineSuggestionVisible && !editorReadonly"
+            },
+            {
+                "command": "editor.action.inlineSuggest.acceptNextLine",
+                "key": "ctrl+shift+right",
+                "when": "inlineSuggestionVisible && !editorReadonly"
+            }
+        ],
+        "configuration": {
+            "title": "HomeFIM",
+            "properties": {
+                "homeFim.endpoint": {
+                    "type": "string",
+                    "default": "http://localhost:11434/api/generate",
+                    "description": "Ollama generate endpoint."
+                },
+                "homeFim.model": {
+                    "type": "string",
+                    "default": "qwen2.5-coder:3b-base-q6_K",
+                    "description": "Ollama model tag (must be a base model with FIM tokens)."
+                },
+                "homeFim.maxTokens": {
+                    "type": "number",
+                    "default": 256,
+                    "description": "Max tokens to generate (num_predict)."
+                },
+                "homeFim.temperature": {
+                    "type": "number",
+                    "default": 0.2,
+                    "description": "Sampling temperature."
+                },
+                "homeFim.contextChars": {
+                    "type": "number",
+                    "default": 4000,
+                    "description": "Total characters of surrounding code sent as FIM context (split between prefix and suffix)."
+                },
+                "homeFim.nOfLines": {
+                    "type": "number",
+                    "default": 1,
+                    "description": "Number of lines to generate per completion."
+                }
+            }
         }
-      }
+    },
+    "scripts": {
+        "dev": "node build.mjs --watch",
+        "build": "node build.mjs",
+        "package": "vsce package --no-dependencies --allow-missing-repository",
+        "install:ext": "pnpm run build && pnpm run package && code --install-extension home-fim-$npm_package_version.vsix --force"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.2",
+        "@types/vscode": "^1.118.0",
+        "@vscode/vsce": "^3.9.1",
+        "esbuild": "^0.28.0",
+        "typescript": "^6.0.3"
     }
-  },
-  "scripts": {
-    "dev": "node build.mjs --watch",
-    "build": "node build.mjs",
-    "package": "vsce package --no-dependencies --allow-missing-repository",
-    "install:ext": "pnpm run build && pnpm run package && code --install-extension home-fim-$npm_package_version.vsix --force"
-  },
-  "devDependencies": {
-    "@types/node": "^25.6.2",
-    "@types/vscode": "^1.118.0",
-    "@vscode/vsce": "^3.9.1",
-    "esbuild": "^0.28.0",
-    "typescript": "^6.0.3"
-  }
 }

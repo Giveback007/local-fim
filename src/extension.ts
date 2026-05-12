@@ -16,7 +16,8 @@ function readFimConfig(): FimConfig {
         model: cfg.get<string>("model", "qwen2.5-coder:3b-base-q6_K"),
         maxTokens: cfg.get<number>("maxTokens", 256),
         temperature: cfg.get<number>("temperature", 0.2),
-        ctxBudget: cfg.get<number>("contextChars", 4000)
+        ctxBudget: cfg.get<number>("contextChars", 4000),
+        nOfLines: cfg.get<number>("nOfLines", 1)
     };
 }
 
@@ -53,14 +54,15 @@ class FimProvider implements InlineCompletionItemProvider {
 
         this.status.start();
 
-        const ctx = buildContext(document, position, readFimConfig().ctxBudget);
+        const { ctxBudget, nOfLines } = readFimConfig();
+        const ctx = buildContext(document, position, ctxBudget);
 
         let tokens = 0;
         let acc = '';
         const { stop, done } = await this.client.streamLines(ctx, async tkn => {
             acc += tkn;
             this.status.progress(++tokens);
-        }, { nOfLines: 1 });
+        }, { nOfLines });
         cancellationToken.onCancellationRequested(stop);
         this.stopGeneration = stop;
         await done;
