@@ -1,9 +1,14 @@
 {
     "name": "home-fim",
     "displayName": "HomeFIM",
-    "version": "0.1.1",
-    "publisher": "dovy",
+    "version": "0.1.5",
+    "publisher": "Giveback007",
     "description": "Local FIM (fill-in-the-middle) inline completion via Ollama.",
+    "icon": "icon.png",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Giveback007/local-fim"
+    },
     "engines": {
         "vscode": "^1.118.1",
         "node": ">=24"
