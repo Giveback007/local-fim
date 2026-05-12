@@ -33,7 +33,7 @@ class Telemetry {
     }
 
     get avgStartMs(): number {
-        return this.totalStartLtcMs / this.totalCompletions;
+        return this.totalCompletions > 1 ? this.totalStartLtcMs / (this.totalCompletions - 1) : 0;
     }
 
     get avgLatencyMs(): number {
@@ -119,7 +119,7 @@ export class StatusBar {
             this.telemetry.record({
                 tokens: this.lastTokenCount,
                 latencyMs: latency,
-                startLtc: this.startLatency,
+                startLtc: this.lastTokenCount > 1 ? this.startLatency : 0,
             });
         }
         this.idle();

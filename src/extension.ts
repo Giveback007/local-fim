@@ -4,10 +4,21 @@ import {
 
     Position, Range, InlineCompletionTriggerKind, InlineCompletionItem,
     workspace, window, languages, commands,
+    ThemeColor,
 } from "vscode";
 
 import { StatusBar } from "./utils/extension.utils";
 import { OllamaClient, type FimConfig } from "./utils/ollama.client";
+import { loaderFramesObj } from "./utils/loaders.utils";
+
+const loaderFrames = loaderFramesObj.breathe.map(f =>
+    window.createTextEditorDecorationType({
+        after: {
+            contentText: ` ${f}`,
+            color: new ThemeColor("editorGhostText.foreground"),
+        },
+    })
+);
 
 function readFimConfig(): FimConfig {
     const cfg = workspace.getConfiguration("homeFim");
@@ -41,6 +52,30 @@ class FimProvider implements InlineCompletionItemProvider {
 
     stopGeneration = () => { }
 
+    private loaderInterval: ReturnType<typeof setInterval> | undefined;
+    private loaderFrame = 0;
+
+    private showLoader(editor = window.activeTextEditor) {
+        if (!editor) return;
+        const pos = editor.selection.active;
+        const range = new Range(pos, pos);
+        this.loaderFrame = 0;
+        this.loaderInterval = setInterval(() => {
+            const prev = loaderFrames[(this.loaderFrame - 1 + loaderFrames.length) % loaderFrames.length]!;
+            const curr = loaderFrames[this.loaderFrame % loaderFrames.length]!;
+            editor.setDecorations(prev, []);
+            editor.setDecorations(curr, [range]);
+            this.loaderFrame++;
+        }, 80);
+    }
+
+    private hideLoader(editor = window.activeTextEditor) {
+        clearInterval(this.loaderInterval);
+        this.loaderInterval = undefined;
+        if (!editor) return;
+        for (const f of loaderFrames) editor.setDecorations(f, []);
+    }
+
     async provideInlineCompletionItems(
         document: TextDocument,
         position: Position,
@@ -53,6 +88,7 @@ class FimProvider implements InlineCompletionItemProvider {
         }
 
         this.status.start();
+        this.showLoader();
 
         const { ctxBudget, nOfLines } = readFimConfig();
         const ctx = buildContext(document, position, ctxBudget);
@@ -63,9 +99,13 @@ class FimProvider implements InlineCompletionItemProvider {
             acc += tkn;
             this.status.progress(++tokens);
         }, { nOfLines });
-        cancellationToken.onCancellationRequested(stop);
-        this.stopGeneration = stop;
+        this.stopGeneration = () => {
+            stop();
+            this.hideLoader();
+        };
+        cancellationToken.onCancellationRequested(this.stopGeneration);
         await done;
+        this.hideLoader();
         this.status.stop();
 
         console.log(`[${JSON.stringify(acc)}]`);
@@ -168,7 +208,8 @@ export function activate(context: ExtensionContext) {
     ].map(fn => fn(provider.stopGeneration));
 
     context.subscriptions.push(
-        reg, trigger, acceptAndContinue, configure, status, onConfigChange, ...dismissTriggers,
+        reg, trigger, acceptAndContinue, configure, status, 
+        onConfigChange, ...dismissTriggers, ...loaderFrames,
         { dispose: () => ollama.cleanUp() },
     );
 }
