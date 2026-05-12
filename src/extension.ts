@@ -151,6 +151,11 @@ export function activate(context: ExtensionContext) {
         commands.executeCommand("editor.action.inlineSuggest.trigger");
     });
 
+    const acceptAndContinue = commands.registerCommand("homeFim.acceptAndContinue", async () => {
+        await commands.executeCommand("editor.action.inlineSuggest.commit");
+        await commands.executeCommand("homeFim.trigger");
+    });
+
     const onConfigChange = workspace.onDidChangeConfiguration(e => {
         if (e.affectsConfiguration("homeFim")) ollama.updateConfig(readFimConfig());
     });
@@ -163,7 +168,7 @@ export function activate(context: ExtensionContext) {
     ].map(fn => fn(provider.stopGeneration));
 
     context.subscriptions.push(
-        reg, trigger, configure, status, onConfigChange, ...dismissTriggers,
+        reg, trigger, acceptAndContinue, configure, status, onConfigChange, ...dismissTriggers,
         { dispose: () => ollama.cleanUp() },
     );
 }

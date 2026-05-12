@@ -1,7 +1,7 @@
 {
     "name": "home-fim",
     "displayName": "HomeFIM",
-    "version": "0.0.5",
+    "version": "0.1.1",
     "publisher": "dovy",
     "description": "Local FIM (fill-in-the-middle) inline completion via Ollama.",
     "engines": {
@@ -21,6 +21,10 @@
             {
                 "command": "homeFim.configure",
                 "title": "HomeFIM: Configure"
+            },
+            {
+                "command": "homeFim.acceptAndContinue",
+                "title": "HomeFIM: Accept and Continue"
             }
         ],
         "keybindings": [
@@ -30,7 +34,7 @@
                 "when": "editorTextFocus"
             },
             {
-                "command": "editor.action.inlineSuggest.commit",
+                "command": "homeFim.acceptAndContinue",
                 "key": "tab",
                 "when": "inlineSuggestionVisible && !editorReadonly && !suggestWidgetVisible"
             },
