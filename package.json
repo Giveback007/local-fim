@@ -17,6 +17,10 @@
             {
                 "command": "homeFim.trigger",
                 "title": "HomeFIM: Trigger Completion"
+            },
+            {
+                "command": "homeFim.configure",
+                "title": "HomeFIM: Configure"
             }
         ],
         "keybindings": [

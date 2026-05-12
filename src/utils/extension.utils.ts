@@ -73,6 +73,7 @@ export class StatusBar {
 
     constructor() {
         this.item = window.createStatusBarItem(StatusBarAlignment.Right, 100);
+        this.item.command = "homeFim.configure";
         this.idle();
         this.item.show();
     }
